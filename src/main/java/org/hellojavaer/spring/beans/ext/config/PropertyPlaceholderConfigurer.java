@@ -16,6 +16,7 @@
 package org.hellojavaer.spring.beans.ext.config;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -25,12 +26,13 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.io.Resource;
 
 /**
  * @author <a href="mailto:hellojavaer@gmail.com">zoukaiming</a>
  */
-public class PropertyPlaceholderConfigurer extends org.springframework.beans.factory.config.PropertyPlaceholderConfigurer {
+public class PropertyPlaceholderConfigurer extends org.springframework.beans.factory.config.PropertyPlaceholderConfigurer implements ApplicationContextAware {
 
     /** Logger available to subclasses */
     protected final Log        logger                   = LogFactory.getLog(getClass());
@@ -42,7 +44,7 @@ public class PropertyPlaceholderConfigurer extends org.springframework.beans.fac
     private static int         sequenceCount            = Integer.MIN_VALUE;
     private int                sequence;
 
-    private Resource[]         locations;
+    private List<Resource>     locations;
 
     public PropertyPlaceholderConfigurer() {
         sequence = sequenceCount++;
@@ -50,18 +52,22 @@ public class PropertyPlaceholderConfigurer extends org.springframework.beans.fac
 
     @Override
     public void setLocations(Resource... locations) {
-        this.locations = locations;
+        this.locations = Arrays.asList(locations);
     }
 
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
     }
 
+    protected ApplicationContext getApplicationContext() {
+        return this.applicationContext;
+    }
+
     public void setResolvePlaceholderAtOnce(boolean resolvePlaceholderAtOnce) {
         this.resolvePlaceholderAtOnce = resolvePlaceholderAtOnce;
     }
 
-    protected Resource[] getLocatons() throws IOException {
+    protected List<Resource> getLocatons() throws IOException {
         return this.locations;
     }
 
@@ -93,7 +99,7 @@ public class PropertyPlaceholderConfigurer extends org.springframework.beans.fac
                     for (Map.Entry<String, PropertyPlaceholderConfigurer> entry : map.entrySet()) {
                         PropertyPlaceholderConfigurer config = entry.getValue();
                         try {
-                            Resource[] resources = config.getLocatons();
+                            List<Resource> resources = config.getLocatons();
                             if (resources != null) {
                                 for (Resource r : resources) {
                                     totalResources.add(r);

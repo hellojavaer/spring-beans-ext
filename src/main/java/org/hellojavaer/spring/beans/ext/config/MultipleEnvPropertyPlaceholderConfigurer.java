@@ -19,55 +19,32 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
 /**
  * @author <a href="mailto:hellojavaer@gmail.com">zoukaiming</a>
  */
-public class MultipleEnvPropertyPlaceholderConfigurer extends PropertyPlaceholderConfigurer implements ApplicationContextAware {
+public class MultipleEnvPropertyPlaceholderConfigurer extends org.hellojavaer.spring.beans.ext.config.PropertyPlaceholderConfigurer {
 
     /** Logger available to subclasses */
-    protected final Log         logger                   = LogFactory.getLog(getClass());
+    protected final Log         logger              = LogFactory.getLog(getClass());
 
-    private static final String ENV_KEY                  = "env";
-    private static final String DEFAULT_ENV_MAPPING      = "{*}->{0}";
-    private ApplicationContext  applicationContext;
+    private static final String ENV_KEY             = "env";
+    private static final String DEFAULT_ENV_MAPPING = "{*}->{0}";
 
-    private String              rule                     = DEFAULT_ENV_MAPPING;
+    private String              rule                = DEFAULT_ENV_MAPPING;
     private String              env;
     private String              baseLocation;
-    private boolean             resolvePlaceholderAtOnce = false;
-
-    private static int          sequenceCount            = Integer.MIN_VALUE;
-    private int                 sequence;
-
-    public MultipleEnvPropertyPlaceholderConfigurer() {
-        sequence = sequenceCount++;
-    }
 
     @Override
     public void setLocations(Resource... locations) {
         throw new IllegalArgumentException("can't set value for this parameter");
-    }
-
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        this.applicationContext = applicationContext;
-    }
-
-    public void setResolvePlaceholderAtOnce(boolean resolvePlaceholderAtOnce) {
-        this.resolvePlaceholderAtOnce = resolvePlaceholderAtOnce;
     }
 
     public void setBaseLocation(String baseLocation) {
@@ -87,20 +64,19 @@ public class MultipleEnvPropertyPlaceholderConfigurer extends PropertyPlaceholde
     }
 
     /**
-     * 
      * @return
      * @throws IOException
      */
     protected List<Resource> getLocatons() throws IOException {
         List<Resource> resources = new ArrayList<Resource>();
         if (env == null) {
-            env = applicationContext.getEnvironment().getProperty(ENV_KEY);
+            env = super.getApplicationContext().getEnvironment().getProperty(ENV_KEY);
             if (env == null) {
                 env = "";
             }
         }
         env = env.trim();
-        String path = applicationContext.getEnvironment().resolveRequiredPlaceholders(baseLocation);
+        String path = super.getApplicationContext().getEnvironment().resolveRequiredPlaceholders(baseLocation);
         List<File> basePaths = getFileDirs(path);
         if (basePaths.isEmpty()) {
             throw new IllegalArgumentException("no basePath found for:" + baseLocation);
@@ -191,7 +167,7 @@ public class MultipleEnvPropertyPlaceholderConfigurer extends PropertyPlaceholde
 
     private List<File> getFileDirs(String basePath) throws IOException {
         List<File> dirs = new ArrayList<File>();
-        Resource[] resources = applicationContext.getResources(basePath);
+        Resource[] resources = super.getApplicationContext().getResources(basePath);
         if (resources != null) {
             for (Resource resource : resources) {
                 if (resource != null && resource.getFile() != null && resource.getFile().isDirectory()) {
@@ -216,49 +192,4 @@ public class MultipleEnvPropertyPlaceholderConfigurer extends PropertyPlaceholde
         }
     }
 
-    @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
-        if (resolvePlaceholderAtOnce) {
-            super.postProcessBeanFactory(beanFactory);
-        } else {
-            Map<String, MultipleEnvPropertyPlaceholderConfigurer> map = this.applicationContext.getBeansOfType(MultipleEnvPropertyPlaceholderConfigurer.class);
-            if (map != null && !map.isEmpty()) {
-                int minSequence = Integer.MIN_VALUE;
-                boolean first = true;
-                for (Map.Entry<String, MultipleEnvPropertyPlaceholderConfigurer> entry : map.entrySet()) {
-                    MultipleEnvPropertyPlaceholderConfigurer config = entry.getValue();
-                    if (first) {
-                        first = false;
-                        minSequence = config.sequence;
-                    } else {
-                        if (config.sequence < minSequence) {
-                            minSequence = config.sequence;
-                        }
-                        if (minSequence < sequence) {
-                            break;
-                        }
-                    }
-                }
-                if (minSequence == sequence) {
-                    List<Resource> totalResources = new LinkedList<Resource>();
-                    for (Map.Entry<String, MultipleEnvPropertyPlaceholderConfigurer> entry : map.entrySet()) {
-                        MultipleEnvPropertyPlaceholderConfigurer config = entry.getValue();
-                        try {
-                            List<Resource> resources = config.getLocatons();
-                            totalResources.addAll(resources);
-                        } catch (IOException e) {
-                            throw new RuntimeException("", e);
-                        }
-                    }
-                    for (Resource r : totalResources) {
-                        logger.info(r);
-                    }
-                    super.setLocations(totalResources.toArray(new Resource[totalResources.size()]));
-                    super.postProcessBeanFactory(beanFactory);
-                } else {
-                    // do nothing
-                }
-            }
-        }
-    }
 }
