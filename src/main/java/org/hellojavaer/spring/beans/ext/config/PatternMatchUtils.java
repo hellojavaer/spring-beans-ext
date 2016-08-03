@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Stack;
 
 /**
+ * this class is the extention of {@link org.springframework.util.PatternMatchUtils}
+ * 
  * @author <a href="mailto:hellojavaer@gmail.com">zoukaiming</a>
  */
 public class PatternMatchUtils {
